@@ -22,32 +22,65 @@ def build_mapping(row: pd.Series) -> dict:
     return mapping
 
 
+# def replace_in_paragraph(paragraph, mapping: dict):
+#     """
+#     为了尽量保留样式：逐 run 替换（比整段重写更稳）
+#     注意：如果占位符被 Word 自动拆到多个 run，run 级别替换可能漏。
+#     """
+#     for run in paragraph.runs:
+#         text = run.text
+#         new_text = text
+#         for k, v in mapping.items():
+#             if k in new_text:
+#                 new_text = new_text.replace(k, v)
+#         if new_text != text:
+#             run.text = new_text
+
+
 def replace_in_paragraph(paragraph, mapping: dict):
     """
-    为了尽量保留样式：逐 run 替换（比整段重写更稳）
-    注意：如果占位符被 Word 自动拆到多个 run，run 级别替换可能漏。
+    按整段文本替换
     """
-    for run in paragraph.runs:
-        text = run.text
-        new_text = text
-        for k, v in mapping.items():
-            if k in new_text:
-                new_text = new_text.replace(k, v)
-        if new_text != text:
-            run.text = new_text
+    full_text = "".join(run.text for run in paragraph.runs)
+    new_text = full_text
+
+    for k, v in mapping.items():
+        new_text = new_text.replace(k, v)
+
+    if new_text != full_text:
+        # 清空原 runs
+        for run in paragraph.runs:
+            run.text = ""
+        # 写回到第一个 run；如果没有 run，就新建一个
+        if paragraph.runs:
+            paragraph.runs[0].text = new_text
+        else:
+            paragraph.add_run(new_text)
 
 
 def replace_in_doc(doc: Document, mapping: dict):
-    # 段落
+    # 普通段落
     for p in doc.paragraphs:
         replace_in_paragraph(p, mapping)
 
-    # 表格
+    # 表格内段落
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for p in cell.paragraphs:
                     replace_in_paragraph(p, mapping)
+
+# def replace_in_doc(doc: Document, mapping: dict):
+#     # 段落
+#     for p in doc.paragraphs:
+#         replace_in_paragraph(p, mapping)
+
+#     # 表格
+#     for table in doc.tables:
+#         for row in table.rows:
+#             for cell in row.cells:
+#                 for p in cell.paragraphs:
+#                     replace_in_paragraph(p, mapping)
 
 
 class App:
